@@ -8,7 +8,6 @@
   "buildCommand": "npm run build",
   "outputDirectory": "dist",
   "framework": "vite",
-  "frameworkPreset": "vite",
   "headers": [
     {
       "source": "/(.*)",
