@@ -116,17 +116,17 @@ const HomeView = ({
     const monthEnd = endOfMonth(currentDate);
     const monthKey = format(monthStart, 'yyyy-MM');
 
-    // Get current month's employees
-    const currentMonthEmployees = monthlyEmployeeData[monthKey] || employeeData;
+    // Get current month's employees with fallback to empty array
+    const currentMonthEmployees = monthlyEmployeeData?.[monthKey] || employeeData || [];
 
-    const totalEmployees = currentMonthEmployees.filter(emp => emp.name).length;
-    const totalAllowance = currentMonthEmployees.reduce((sum, emp) => sum + emp.monthlyLeaveAllowance, 0);
+    const totalEmployees = currentMonthEmployees.filter(emp => emp?.name).length;
+    const totalAllowance = currentMonthEmployees.reduce((sum, emp) => sum + (emp?.monthlyLeaveAllowance || 0), 0);
     
     // Only count leaves for the current month
-    const totalUsed = Object.entries(vacations).reduce((sum, [dateKey, dayVacations]) => {
+    const totalUsed = Object.entries(vacations || {}).reduce((sum, [dateKey, dayVacations]) => {
       const date = new Date(dateKey);
       if (date >= monthStart && date <= monthEnd) {
-        return sum + dayVacations.filter(item => item.text).length;
+        return sum + (dayVacations?.filter(item => item?.text)?.length || 0);
       }
       return sum;
     }, 0);
