@@ -115,3 +115,26 @@ export interface NewsItem {
   sourceUrl: string;
   publishedAt: Date;
 }
+
+export interface Vacation {
+  id: string;
+  userId: string;
+  startDate: string;
+  endDate: string;
+  type: string;
+  status: 'pending' | 'approved' | 'rejected';
+  reason?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface Link {
+  id: string;
+  title: string;
+  url: string;
+  description?: string;
+  category?: string;
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+}

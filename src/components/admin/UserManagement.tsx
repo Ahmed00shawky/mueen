@@ -189,66 +189,66 @@ const UserManagement = () => {
         </Button>
       </div>
 
-      <div className="overflow-x-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>{isArabic ? "المستخدم" : "User"}</TableHead>
-              <TableHead>{isArabic ? "البريد الإلكتروني" : "Email"}</TableHead>
-              <TableHead>{isArabic ? "الدور" : "Role"}</TableHead>
-              <TableHead>{isArabic ? "الحالة" : "Status"}</TableHead>
-              <TableHead>{isArabic ? "آخر تسجيل دخول" : "Last Login"}</TableHead>
-              <TableHead className="text-right">{isArabic ? "الإجراءات" : "Actions"}</TableHead>
+    <div className="overflow-x-auto">
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{isArabic ? "المستخدم" : "User"}</TableHead>
+            <TableHead>{isArabic ? "البريد الإلكتروني" : "Email"}</TableHead>
+            <TableHead>{isArabic ? "الدور" : "Role"}</TableHead>
+            <TableHead>{isArabic ? "الحالة" : "Status"}</TableHead>
+            <TableHead>{isArabic ? "آخر تسجيل دخول" : "Last Login"}</TableHead>
+            <TableHead className="text-right">{isArabic ? "الإجراءات" : "Actions"}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {users.map((user) => (
+            <TableRow key={user.id}>
+              <TableCell className="font-medium">
+                <div className="flex items-center space-x-2">
+                  <Avatar className="h-8 w-8">
+                    <AvatarImage src="/placeholder.svg" alt={user.username} />
+                    <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
+                  </Avatar>
+                  <span>{user.username}</span>
+                </div>
+              </TableCell>
+              <TableCell>{user.email || "-"}</TableCell>
+              <TableCell>
+                <Badge variant={user.role === UserRole.Admin ? "default" : "outline"}>
+                  {user.role === UserRole.Admin 
+                    ? (isArabic ? "مسؤول" : "Admin") 
+                    : (isArabic ? "مستخدم" : "User")}
+                </Badge>
+              </TableCell>
+              <TableCell>
+                <div className="flex items-center">
+                  <div className={`h-2.5 w-2.5 rounded-full ${
+                    user.status === UserStatus.Online ? "bg-green-500" : "bg-gray-300"
+                  } mr-2`}></div>
+                  {user.status === UserStatus.Online 
+                    ? (isArabic ? "متصل" : "Online") 
+                    : (isArabic ? "غير متصل" : "Offline")}
+                </div>
+              </TableCell>
+              <TableCell>
+                {new Date(user.lastLogin).toLocaleString(isArabic ? 'ar-SA' : 'en-US', {
+                  dateStyle: 'short',
+                  timeStyle: 'short'
+                })}
+              </TableCell>
+              <TableCell className="text-right">
+                <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
+                  {isArabic ? "تعديل" : "Edit"}
+                </Button>
+                <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteUser(user.id)}>
+                  {isArabic ? "حذف" : "Delete"}
+                </Button>
+              </TableCell>
             </TableRow>
-          </TableHeader>
-          <TableBody>
-            {users.map((user) => (
-              <TableRow key={user.id}>
-                <TableCell className="font-medium">
-                  <div className="flex items-center space-x-2">
-                    <Avatar className="h-8 w-8">
-                      <AvatarImage src="/placeholder.svg" alt={user.username} />
-                      <AvatarFallback>{user.username[0].toUpperCase()}</AvatarFallback>
-                    </Avatar>
-                    <span>{user.username}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{user.email || "-"}</TableCell>
-                <TableCell>
-                  <Badge variant={user.role === UserRole.Admin ? "default" : "outline"}>
-                    {user.role === UserRole.Admin 
-                      ? (isArabic ? "مسؤول" : "Admin") 
-                      : (isArabic ? "مستخدم" : "User")}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center">
-                    <div className={`h-2.5 w-2.5 rounded-full ${
-                      user.status === UserStatus.Online ? "bg-green-500" : "bg-gray-300"
-                    } mr-2`}></div>
-                    {user.status === UserStatus.Online 
-                      ? (isArabic ? "متصل" : "Online") 
-                      : (isArabic ? "غير متصل" : "Offline")}
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {new Date(user.lastLogin).toLocaleString(isArabic ? 'ar-SA' : 'en-US', {
-                    dateStyle: 'short',
-                    timeStyle: 'short'
-                  })}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="sm" onClick={() => handleEditUser(user)}>
-                    {isArabic ? "تعديل" : "Edit"}
-                  </Button>
-                  <Button variant="ghost" size="sm" className="text-destructive" onClick={() => handleDeleteUser(user.id)}>
-                    {isArabic ? "حذف" : "Delete"}
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
+          ))}
+        </TableBody>
+      </Table>
       </div>
 
       {/* Edit User Dialog */}

@@ -1,29 +1,19 @@
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
-import { User, UserRole, UserStatus } from "@/lib/types";
-import { storage } from "@/lib/storage";
+import { User, UserRole, UserStatus, Permission } from "@/lib/types";
+import { auth } from "@/lib/api";
 import { toast } from "@/hooks/use-toast";
 
 interface AuthContextType {
   user: User | null;
-  login: (username: string, password: string) => boolean;
-  logout: () => void;
+  login: (username: string, password: string) => Promise<boolean>;
+  logout: () => Promise<void>;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  hasPermission: (permission: string) => boolean;
+  hasPermission: (permission: Permission) => boolean;
   setUser: (user: User | null) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  login: () => false,
-  logout: () => {},
-  isAuthenticated: false,
-  isAdmin: false,
-  hasPermission: () => false,
-  setUser: () => {}
-});
-
-export const useAuth = () => useContext(AuthContext);
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -38,40 +28,23 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
     if (loggedInUser) {
       try {
         const userData = JSON.parse(loggedInUser);
-        const storedUser = storage.getUserById(userData.id);
-        
-        if (storedUser) {
-          const updatedUser = {
-            ...storedUser,
-            status: UserStatus.Online,
-            lastLogin: new Date().toISOString()
-          };
-          storage.updateUser(updatedUser);
-          setUser(updatedUser);
-        }
+        setUser(userData);
       } catch (error) {
         console.error("Error restoring user session:", error);
         localStorage.removeItem("mueen_currentUser");
+        localStorage.removeItem("mueen_token");
       }
     }
   }, []);
 
-  const login = (username: string, password: string): boolean => {
-    const foundUser = storage.getUserByUsername(username);
-    
-    if (foundUser && foundUser.password === password) {
-      // In a real application, we would never compare passwords directly
-      // We would hash the input password and compare with the stored hash
+  const login = async (username: string, password: string): Promise<boolean> => {
+    try {
+      const response = await auth.login(username, password);
+      const { user: userData, token } = response;
       
-      const updatedUser = {
-        ...foundUser,
-        status: UserStatus.Online,
-        lastLogin: new Date().toISOString()
-      };
-      
-      storage.updateUser(updatedUser);
-      setUser(updatedUser);
-      localStorage.setItem("mueen_currentUser", JSON.stringify({ id: updatedUser.id }));
+      setUser(userData);
+      localStorage.setItem("mueen_currentUser", JSON.stringify(userData));
+      localStorage.setItem("mueen_token", token);
       
       toast({
         title: "Login successful",
@@ -79,41 +52,44 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       });
       
       return true;
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Login failed",
+        description: "Invalid username or password",
+        variant: "destructive"
+      });
+      return false;
     }
-    
-    toast({
-      title: "Login failed",
-      description: "Invalid username or password",
-      variant: "destructive"
-    });
-    
-    return false;
   };
 
-  const logout = (): void => {
-    if (user) {
-      const updatedUser = {
-        ...user,
-        status: UserStatus.Offline
-      };
-      
-      storage.updateUser(updatedUser);
-      localStorage.removeItem("mueen_currentUser");
+  const logout = async () => {
+    try {
+      await auth.logout();
       setUser(null);
+      localStorage.removeItem("mueen_currentUser");
+      localStorage.removeItem("mueen_token");
       
       toast({
         title: "Logged out",
-        description: "You have been logged out successfully",
+        description: "You have been successfully logged out",
       });
+    } catch (error) {
+      console.error("Logout error:", error);
+      // Still clear local state even if server logout fails
+      setUser(null);
+      localStorage.removeItem("mueen_currentUser");
+      localStorage.removeItem("mueen_token");
     }
   };
 
+  const isAuthenticated = !!user;
   const isAdmin = user?.role === UserRole.Admin;
-  
-  const hasPermission = (permission: string): boolean => {
+
+  const hasPermission = (permission: Permission): boolean => {
     if (!user) return false;
-    if (user.role === UserRole.Admin) return true;
-    return user.permissions.includes(permission as any);
+    if (isAdmin) return true;
+    return user.permissions.includes(permission);
   };
 
   return (
@@ -121,7 +97,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       user,
       login,
       logout,
-      isAuthenticated: !!user,
+      isAuthenticated,
       isAdmin,
       hasPermission,
       setUser
@@ -129,4 +105,12 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       {children}
     </AuthContext.Provider>
   );
+};
+
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
 };
