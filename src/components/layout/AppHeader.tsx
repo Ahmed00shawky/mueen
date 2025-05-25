@@ -50,7 +50,7 @@ const AppHeader = ({
     <header className="app-header">
       <Link to="/dashboard" className="flex items-center gap-2 hover:opacity-80 transition-opacity">
         <div className="h-8 w-8 bg-white rounded-full flex items-center justify-center overflow-hidden">
-          <img src="/logo.png" alt="mueen logo" className="w-full h-full object-cover" />
+          <img src="/logo.png" alt="mueen logo" className="w-[120%] h-[120%] object-cover" />
         </div>
         <h1 className="text-xl font-bold">mueen</h1>
       </Link>

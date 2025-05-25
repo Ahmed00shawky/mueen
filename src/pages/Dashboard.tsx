@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { useAuth } from "@/context/AuthContext";
@@ -31,15 +30,16 @@ const Dashboard = () => {
   const loadUserData = () => {
     if (!user) return;
     
-    const userTasks = storage.getTasksByUserId(user.id);
+    const userTasks = storage.getTasksByUserId(user.id, user);
     setTasks(userTasks);
     
-    const userNotes = storage.getNotesByUserId(user.id);
+    const userNotes = storage.getNotesByUserId(user.id, user);
     setNotes(userNotes);
   };
   
   const handleTaskUpdate = (updatedTask: Task) => {
-    storage.updateTask(updatedTask);
+    if (!user) return;
+    storage.updateTaskForUser(user.id, updatedTask, user);
     
     setTasks(prevTasks => 
       prevTasks.map(task => task.id === updatedTask.id ? updatedTask : task)
@@ -47,17 +47,20 @@ const Dashboard = () => {
   };
   
   const handleTaskCreate = (newTask: Task) => {
-    storage.addTask(newTask);
+    if (!user) return;
+    storage.addTaskForUser(user.id, newTask, user);
     setTasks(prevTasks => [...prevTasks, newTask]);
   };
   
   const handleTaskDelete = (taskId: string) => {
-    storage.deleteTask(taskId);
+    if (!user) return;
+    storage.deleteTaskForUser(user.id, taskId, user);
     setTasks(prevTasks => prevTasks.filter(task => task.id !== taskId));
   };
   
   const handleNoteUpdate = (updatedNote: Note) => {
-    storage.updateNote(updatedNote);
+    if (!user) return;
+    storage.updateNoteForUser(user.id, updatedNote, user);
     
     setNotes(prevNotes => 
       prevNotes.map(note => note.id === updatedNote.id ? updatedNote : note)
@@ -65,12 +68,14 @@ const Dashboard = () => {
   };
   
   const handleNoteCreate = (newNote: Note) => {
-    storage.addNote(newNote);
+    if (!user) return;
+    storage.addNoteForUser(user.id, newNote, user);
     setNotes(prevNotes => [...prevNotes, newNote]);
   };
   
   const handleNoteDelete = (noteId: string) => {
-    storage.deleteNote(noteId);
+    if (!user) return;
+    storage.deleteNoteForUser(user.id, noteId, user);
     setNotes(prevNotes => prevNotes.filter(note => note.id !== noteId));
   };
   

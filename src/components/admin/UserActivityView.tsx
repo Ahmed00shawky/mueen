@@ -1,49 +1,98 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { User, Task, Note } from "@/lib/types";
 import { storage } from "@/lib/storage";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useSettings } from "@/context/SettingsContext";
+import { useAuth } from "@/context/AuthContext";
+import { useVacations } from "@/context/VacationsContext";
 import { Language } from "@/lib/types";
-import { format } from "date-fns";
+import { format, startOfMonth, endOfMonth } from "date-fns";
 
-interface Leave {
-  id: string;
-  userId: string;
-  startDate: string;
-  endDate: string;
-  reason: string;
-  status: "approved" | "rejected" | "pending";
+interface MonthlyLeaveStatus {
+  totalEmployees: number;
+  totalAllowance: number;
+  totalUsed: number;
+  daysLeft: number;
+  monthlyLeaves: {
+    date: string;
+    employeeName: string;
+    status: "approved" | "rejected" | "pending";
+  }[];
 }
 
 const UserActivityView = () => {
   const { language } = useSettings();
+  const { user } = useAuth();
+  const { employeeData, vacations } = useVacations();
   const isArabic = language === Language.Arabic;
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<string>("");
   const [userTasks, setUserTasks] = useState<Task[]>([]);
   const [userNotes, setUserNotes] = useState<Note[]>([]);
-  const [userLeaves, setUserLeaves] = useState<Leave[]>([]);
+  const [monthlyLeaveStatus, setMonthlyLeaveStatus] = useState<MonthlyLeaveStatus | null>(null);
 
   useEffect(() => {
+    if (!user) return;
     const allUsers = storage.getUsers();
     setUsers(allUsers);
     if (allUsers.length > 0) {
       setSelectedUser(allUsers[0].id);
     }
-  }, []);
+  }, [user]);
 
   useEffect(() => {
-    if (selectedUser) {
-      const tasks = storage.getTasksByUserId(selectedUser);
-      const notes = storage.getNotesByUserId(selectedUser);
-      const leaves = storage.getLeavesByUserId(selectedUser);
+    if (!user || !selectedUser) return;
+    
+    try {
+      const tasks = storage.getTasksByUserId(selectedUser, user);
+      const notes = storage.getNotesByUserId(selectedUser, user);
+      
       setUserTasks(tasks);
       setUserNotes(notes);
-      setUserLeaves(leaves);
+
+      // Calculate monthly leave status using the same logic as MonthlyVacationsTool
+      const currentDate = new Date();
+      const monthStart = startOfMonth(currentDate);
+      const monthEnd = endOfMonth(currentDate);
+
+      // Get total number of employees
+      const totalEmployees = employeeData.filter(emp => emp.name).length;
+
+      // Calculate total allowance for all employees
+      const totalAllowance = employeeData.reduce((sum, emp) => sum + emp.monthlyLeaveAllowance, 0);
+
+      // Get all leaves for the current month
+      const monthlyLeaves = Object.entries(vacations)
+        .filter(([dateKey]) => {
+          const date = new Date(dateKey);
+          return date >= monthStart && date <= monthEnd;
+        })
+        .flatMap(([dateKey, dayVacations]) => 
+          dayVacations
+            .filter(item => item.text) // Only include leaves with assigned employees
+            .map(item => ({
+              date: dateKey,
+              employeeName: item.text,
+              status: "approved" as const // Since these are approved leaves
+            }))
+        );
+
+      const totalUsed = monthlyLeaves.length;
+      const daysLeft = totalAllowance - totalUsed;
+
+      setMonthlyLeaveStatus({
+        totalEmployees,
+        totalAllowance,
+        totalUsed,
+        daysLeft,
+        monthlyLeaves
+      });
+    } catch (error) {
+      console.error('Error loading user data:', error);
     }
-  }, [selectedUser]);
+  }, [selectedUser, user, employeeData, vacations]);
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -74,11 +123,19 @@ const UserActivityView = () => {
     return status;
   };
 
+  if (!user) {
+    return (
+      <div className="text-center text-muted-foreground">
+        {isArabic ? "يرجى تسجيل الدخول" : "Please log in"}
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      <div className="flex items-center space-x-4">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-4">
         <Select value={selectedUser} onValueChange={setSelectedUser}>
-          <SelectTrigger className="w-[200px]">
+          <SelectTrigger className="w-full sm:w-[200px]">
             <SelectValue placeholder={isArabic ? "اختر المستخدم" : "Select User"} />
           </SelectTrigger>
           <SelectContent>
@@ -98,15 +155,15 @@ const UserActivityView = () => {
       </div>
 
       <Tabs defaultValue="tasks" className="w-full">
-        <TabsList>
+        <TabsList className="w-full overflow-x-auto flex whitespace-nowrap">
           <TabsTrigger value="tasks">
             {isArabic ? "المهام" : "Tasks"}
           </TabsTrigger>
           <TabsTrigger value="notes">
             {isArabic ? "الملاحظات" : "Notes"}
           </TabsTrigger>
-          <TabsTrigger value="leaves">
-            {isArabic ? "الإجازات" : "Leaves"}
+          <TabsTrigger value="monthlyLeave">
+            {isArabic ? "الإجازات الشهرية" : "Monthly Leave"}
           </TabsTrigger>
         </TabsList>
 
@@ -171,36 +228,83 @@ const UserActivityView = () => {
           </div>
         </TabsContent>
 
-        <TabsContent value="leaves">
-          <div className="space-y-4">
-            {userLeaves.length === 0 ? (
-              <p className="text-center text-muted-foreground">
-                {isArabic ? "لا توجد إجازات" : "No leaves found"}
-              </p>
-            ) : (
-              userLeaves.map((leave) => (
-                <Card key={leave.id}>
-                  <CardHeader>
-                    <CardTitle className="text-lg">
-                      {isArabic ? "طلب إجازة" : "Leave Request"}
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-2">
+        <TabsContent value="monthlyLeave">
+          <div className="space-y-6">
+            {/* Monthly Leave Summary */}
+            <div className="grid grid-cols-4 gap-4">
+              <Card>
+                <CardContent className="p-4 flex flex-col items-center">
+                  <div className="text-3xl font-bold">
+                    {monthlyLeaveStatus?.totalEmployees || 0}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {isArabic ? "عدد الموظفين" : "Number of Employees"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-col items-center">
+                  <div className="text-3xl font-bold text-green-600">
+                    {monthlyLeaveStatus?.totalAllowance || 0}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {isArabic ? "الإجازات المتاحة" : "Available Leaves"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-col items-center">
+                  <div className="text-3xl font-bold text-orange-600">
+                    {monthlyLeaveStatus?.totalUsed || 0}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {isArabic ? "الإجازات المستخدمة" : "Used Leaves"}
+                  </p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-4 flex flex-col items-center">
+                  <div className="text-3xl font-bold text-blue-600">
+                    {monthlyLeaveStatus?.daysLeft || 0}
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    {isArabic ? "الإجازات المتبقية" : "Remaining Leaves"}
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Monthly Leave Details */}
+            <div className="space-y-4">
+              <h3 className="text-lg font-medium">
+                {isArabic ? "تفاصيل الإجازات" : "Leave Details"}
+              </h3>
+              {monthlyLeaveStatus?.monthlyLeaves.length === 0 ? (
+                <p className="text-center text-muted-foreground">
+                  {isArabic ? "لا توجد إجازات لهذا الشهر" : "No leaves for this month"}
+                </p>
+              ) : (
+                monthlyLeaveStatus?.monthlyLeaves.map((leave, index) => (
+                  <Card key={index}>
+                    <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">
-                          {format(new Date(leave.startDate), "PPP")} - {format(new Date(leave.endDate), "PPP")}
-                        </span>
+                        <div className="space-y-1">
+                          <span className="text-sm font-medium">
+                            {format(new Date(leave.date), "PPP")}
+                          </span>
+                          <p className="text-sm text-muted-foreground">
+                            {leave.employeeName}
+                          </p>
+                        </div>
                         <span className={`px-2 py-1 rounded-full ${getStatusColor(leave.status)}`}>
                           {getStatusText(leave.status)}
                         </span>
                       </div>
-                      <p className="text-sm text-muted-foreground">{leave.reason}</p>
-                    </div>
-                  </CardContent>
-                </Card>
-              ))
-            )}
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           </div>
         </TabsContent>
       </Tabs>

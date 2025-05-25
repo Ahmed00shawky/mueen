@@ -1,9 +1,9 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { User, Task, Note, Notification } from "@/lib/types";
+import { User, Task, Note, Notification, TaskCategory, UserStatus } from "@/lib/types";
 import { storage } from "@/lib/storage";
 import { useSettings } from "@/context/SettingsContext";
+import { useAuth } from "@/context/AuthContext";
 import { Language } from "@/lib/types";
 import { 
   Bar, 
@@ -21,6 +21,7 @@ import {
 
 const AppStats = () => {
   const { language } = useSettings();
+  const { user } = useAuth();
   const isArabic = language === Language.Arabic;
   const [stats, setStats] = useState({
     totalUsers: 0,
@@ -34,24 +35,35 @@ const AppStats = () => {
   const [taskDistributionData, setTaskDistributionData] = useState<any[]>([]);
   
   useEffect(() => {
+    if (!user) return;
+
     const users = storage.getUsers();
-    const tasks = storage.getTasks();
-    const notes = storage.getNotes();
     const notifications = storage.getNotifications();
+    
+    // Get all tasks and notes for each user
+    const allTasks: Task[] = [];
+    const allNotes: Note[] = [];
+    
+    users.forEach(user => {
+      const userTasks = storage.getTasksByUserId(user.id, user);
+      const userNotes = storage.getNotesByUserId(user.id, user);
+      allTasks.push(...userTasks);
+      allNotes.push(...userNotes);
+    });
     
     // Calculate basic stats
     setStats({
       totalUsers: users.length,
-      totalTasks: tasks.length,
-      totalNotes: notes.length,
+      totalTasks: allTasks.length,
+      totalNotes: allNotes.length,
       totalNotifications: notifications.length,
-      activeUsers: users.filter(user => user.status === 'online').length,
+      activeUsers: users.filter(user => user.status === UserStatus.Online).length,
     });
     
     // Generate user activity data
     const userData = users.map(user => {
-      const userTasks = tasks.filter(task => task.userId === user.id).length;
-      const userNotes = notes.filter(note => note.userId === user.id).length;
+      const userTasks = allTasks.filter(task => task.userId === user.id).length;
+      const userNotes = allNotes.filter(note => note.userId === user.id).length;
       
       return {
         name: user.username,
@@ -63,8 +75,8 @@ const AppStats = () => {
     setUserActivityData(userData);
     
     // Generate task distribution data
-    const tasksByCategory = tasks.reduce((acc: Record<string, number>, task) => {
-      const category = task.category;
+    const tasksByCategory = allTasks.reduce((acc: Record<string, number>, task) => {
+      const category = task.category || TaskCategory.NotUrgentNotImportant;
       acc[category] = (acc[category] || 0) + 1;
       return acc;
     }, {});
@@ -73,16 +85,16 @@ const AppStats = () => {
       let name = "";
       
       switch (category) {
-        case "urgent_important":
+        case TaskCategory.UrgentImportant:
           name = isArabic ? "عاجل ومهم" : "Urgent & Important";
           break;
-        case "urgent_not_important":
+        case TaskCategory.UrgentNotImportant:
           name = isArabic ? "عاجل وغير مهم" : "Urgent & Not Important";
           break;
-        case "not_urgent_important":
+        case TaskCategory.NotUrgentImportant:
           name = isArabic ? "غير عاجل ومهم" : "Not Urgent & Important";
           break;
-        case "not_urgent_not_important":
+        case TaskCategory.NotUrgentNotImportant:
           name = isArabic ? "غير عاجل وغير مهم" : "Not Urgent & Not Important";
           break;
         default:
@@ -94,13 +106,13 @@ const AppStats = () => {
     
     setTaskDistributionData(taskDistribution);
     
-  }, [isArabic]);
+  }, [isArabic, user]);
   
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <Card>
           <CardContent className="pt-6 text-center">
             <div className="text-4xl font-bold">{stats.totalUsers}</div>
@@ -133,6 +145,15 @@ const AppStats = () => {
             <div className="text-4xl font-bold">{stats.activeUsers}</div>
             <p className="text-sm text-muted-foreground mt-1">
               {isArabic ? "المستخدمين النشطين" : "Active Users"}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <div className="text-4xl font-bold">{stats.totalNotifications}</div>
+            <p className="text-sm text-muted-foreground mt-1">
+              {isArabic ? "إجمالي الإشعارات" : "Total Notifications"}
             </p>
           </CardContent>
         </Card>

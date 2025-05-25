@@ -43,6 +43,7 @@ export interface Task {
   priorityColor: string;
   createdAt: Date;
   updatedAt: Date;
+  order?: number;
 }
 
 export enum TaskCategory {

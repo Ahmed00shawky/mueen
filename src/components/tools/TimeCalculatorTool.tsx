@@ -50,7 +50,7 @@ const TimeCalculatorTool = () => {
     { value: 11, label: isArabic ? "ديسمبر" : "December" },
   ];
 
-  const years = Array.from({ length: 21 }, (_, i) => new Date().getFullYear() - 10 + i);
+  const years = Array.from({ length: 161 }, (_, i) => 1900 + i);
   
   const calculateTimeDifference = () => {
     try {
@@ -228,8 +228,9 @@ const TimeCalculatorTool = () => {
                         selected={startDate}
                         onSelect={(date) => handleDateChange(date, true)}
                         fromDate={new Date(1900, 0, 1)}
-                        toDate={new Date(2100, 11, 31)}
+                        toDate={new Date(2060, 11, 31)}
                         defaultMonth={startDate}
+                        month={startDate}
                       />
                     </div>
                     <p className="text-center text-sm">
@@ -277,8 +278,9 @@ const TimeCalculatorTool = () => {
                         selected={endDate}
                         onSelect={(date) => handleDateChange(date, false)}
                         fromDate={startDate}
-                        toDate={new Date(2100, 11, 31)}
+                        toDate={new Date(2060, 11, 31)}
                         defaultMonth={endDate}
+                        month={endDate}
                       />
                     </div>
                     <p className="text-center text-sm">

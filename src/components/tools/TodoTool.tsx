@@ -12,7 +12,9 @@ import TaskMatrix from "@/components/tasks/TaskMatrix";
 import { useAuth } from "@/context/AuthContext";
 import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertCircle } from "lucide-react";
+import { AlertCircle, Plus } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Textarea } from "@/components/ui/textarea";
 
 interface TodoToolProps {
   tasks: Task[];
@@ -68,85 +70,82 @@ const TodoTool = ({ tasks, onTaskUpdate, onTaskCreate, onTaskDelete }: TodoToolP
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-end">
-        {!isCreating ? (
-          <Button onClick={() => setIsCreating(true)}>
-            {isArabic ? "إضافة مهمة" : "Add Task"}
-          </Button>
-        ) : (
-          <Button variant="ghost" onClick={() => setIsCreating(false)}>
-            {isArabic ? "إلغاء" : "Cancel"}
-          </Button>
-        )}
-      </div>
-
-      {isCreating && (
-        <Card className="mb-4">
-          <CardContent className="pt-4">
-            <div className="space-y-4">
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold">
+          {isArabic ? "قائمة المهام" : "To Do List"}
+        </h2>
+        <Dialog open={isCreating} onOpenChange={setIsCreating}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="h-4 w-4 mr-1" />
+              {isArabic ? "مهمة جديدة" : "New Task"}
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>{isArabic ? "مهمة جديدة" : "New Task"}</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
               <div className="space-y-2">
-                <Label htmlFor="title" className="text-foreground">{isArabic ? "العنوان" : "Title"}</Label>
+                <label className="text-sm font-medium">
+                  {isArabic ? "العنوان" : "Title"}
+                </label>
                 <Input
-                  id="title"
                   value={newTask.title}
                   onChange={(e) => setNewTask({ ...newTask, title: e.target.value })}
-                  placeholder={isArabic ? "عنوان المهمة" : "Task title"}
-                  className="bg-background text-foreground border-input focus:ring-2 focus:ring-primary/20"
+                  placeholder={isArabic ? "أدخل عنوان المهمة" : "Enter task title"}
                 />
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-foreground">{isArabic ? "الوصف" : "Description"}</Label>
-                <Input
-                  id="description"
+                <label className="text-sm font-medium">
+                  {isArabic ? "الوصف" : "Description"}
+                </label>
+                <Textarea
                   value={newTask.description}
                   onChange={(e) => setNewTask({ ...newTask, description: e.target.value })}
-                  placeholder={isArabic ? "وصف المهمة (اختياري)" : "Task description (optional)"}
-                  className="bg-background text-foreground border-input focus:ring-2 focus:ring-primary/20"
+                  placeholder={isArabic ? "أدخل وصف المهمة" : "Enter task description"}
                 />
               </div>
-              
               <div className="space-y-2">
-                <Label htmlFor="category" className="text-foreground">{isArabic ? "الفئة" : "Category"}</Label>
-                <Select 
-                  value={newTask.category} 
+                <label className="text-sm font-medium">
+                  {isArabic ? "الفئة" : "Category"}
+                </label>
+                <Select
+                  value={newTask.category}
                   onValueChange={(value) => setNewTask({ ...newTask, category: value as TaskCategory })}
                 >
-                  <SelectTrigger id="category" className="bg-background text-foreground border-input focus:ring-2 focus:ring-primary/20">
-                    <SelectValue>
-                      {newTask.category === TaskCategory.UrgentImportant && (isArabic ? "عاجل ومهم" : "Urgent & Important")}
-                      {newTask.category === TaskCategory.UrgentNotImportant && (isArabic ? "عاجل وغير مهم" : "Urgent & Not Important")}
-                      {newTask.category === TaskCategory.NotUrgentImportant && (isArabic ? "غير عاجل ومهم" : "Not Urgent & Important")}
-                      {newTask.category === TaskCategory.NotUrgentNotImportant && (isArabic ? "غير عاجل وغير مهم" : "Not Urgent & Not Important")}
-                    </SelectValue>
+                  <SelectTrigger>
+                    <SelectValue placeholder={isArabic ? "اختر الفئة" : "Select category"} />
                   </SelectTrigger>
-                  <SelectContent className="bg-background text-foreground border-input">
-                    <SelectItem value={TaskCategory.UrgentImportant} className="focus:bg-accent focus:text-accent-foreground">
+                  <SelectContent>
+                    <SelectItem value={TaskCategory.UrgentImportant}>
                       {isArabic ? "عاجل ومهم" : "Urgent & Important"}
                     </SelectItem>
-                    <SelectItem value={TaskCategory.UrgentNotImportant} className="focus:bg-accent focus:text-accent-foreground">
+                    <SelectItem value={TaskCategory.UrgentNotImportant}>
                       {isArabic ? "عاجل وغير مهم" : "Urgent & Not Important"}
                     </SelectItem>
-                    <SelectItem value={TaskCategory.NotUrgentImportant} className="focus:bg-accent focus:text-accent-foreground">
+                    <SelectItem value={TaskCategory.NotUrgentImportant}>
                       {isArabic ? "غير عاجل ومهم" : "Not Urgent & Important"}
                     </SelectItem>
-                    <SelectItem value={TaskCategory.NotUrgentNotImportant} className="focus:bg-accent focus:text-accent-foreground">
+                    <SelectItem value={TaskCategory.NotUrgentNotImportant}>
                       {isArabic ? "غير عاجل وغير مهم" : "Not Urgent & Not Important"}
                     </SelectItem>
                   </SelectContent>
                 </Select>
               </div>
-              
-              <div className="flex justify-end">
-                <Button onClick={handleCreateTask} className="bg-primary text-primary-foreground hover:bg-primary/90">
+              <div className="flex justify-end gap-2">
+                <Button variant="outline" onClick={() => setIsCreating(false)}>
+                  {isArabic ? "إلغاء" : "Cancel"}
+                </Button>
+                <Button onClick={handleCreateTask}>
                   {isArabic ? "إضافة" : "Add"}
                 </Button>
               </div>
             </div>
-          </CardContent>
-        </Card>
-      )}
+          </DialogContent>
+        </Dialog>
+      </div>
 
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as any)}>
         <TabsList className="grid grid-cols-2 mb-4">
@@ -159,15 +158,6 @@ const TodoTool = ({ tasks, onTaskUpdate, onTaskCreate, onTaskDelete }: TodoToolP
             tasks={tasks} 
             onTaskUpdate={onTaskUpdate} 
             onTaskDelete={onTaskDelete}
-            onTasksReorder={(reorderedTasks) => {
-              // Update all tasks with their new order
-              reorderedTasks.forEach((task, index) => {
-                onTaskUpdate({
-                  ...task,
-                  updatedAt: new Date()
-                });
-              });
-            }}
           />
         </TabsContent>
         

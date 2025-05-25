@@ -46,6 +46,16 @@ const DateConverterTool = () => {
     "رمضان", "شوال", "ذو القعدة", "ذو الحجة"
   ];
 
+  const gregorianMonthNames = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+
+  const gregorianMonthNamesAr = [
+    "يناير", "فبراير", "مارس", "أبريل", "مايو", "يونيو",
+    "يوليو", "أغسطس", "سبتمبر", "أكتوبر", "نوفمبر", "ديسمبر"
+  ];
+
   // Convert Gregorian to Hijri date
   const convertGregorianToHijri = (date: Date): HijriDate => {
     try {
@@ -126,18 +136,59 @@ const DateConverterTool = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>{isArabic ? "التاريخ الميلادي" : "Gregorian Date"}</Label>
-                    <div className="mt-2">
-                      <Calendar
-                        mode="single"
-                        selected={gregorianDate}
-                        onSelect={(date) => date && setGregorianDate(date)}
-                        className="rounded-md border mx-auto"
-                      />
-                    </div>
-                    <div className="mt-4 text-center">
-                      <span className="text-xl">
-                        {format(gregorianDate, "MMMM d, yyyy")}
-                      </span>
+                    <div className="mt-4 space-y-4">
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <Label>{isArabic ? "اليوم" : "Day"}</Label>
+                          <Input
+                            type="number"
+                            min={1}
+                            max={31}
+                            value={gregorianDate.getDate()}
+                            onChange={(e) => {
+                              const newDate = new Date(gregorianDate);
+                              newDate.setDate(parseInt(e.target.value));
+                              setGregorianDate(newDate);
+                            }}
+                          />
+                        </div>
+                        <div>
+                          <Label>{isArabic ? "الشهر" : "Month"}</Label>
+                          <Select
+                            value={(gregorianDate.getMonth() + 1).toString()}
+                            onValueChange={(value) => {
+                              const newDate = new Date(gregorianDate);
+                              newDate.setMonth(parseInt(value) - 1);
+                              setGregorianDate(newDate);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder={isArabic ? "اختر الشهر" : "Select Month"} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: 12 }, (_, i) => (
+                                <SelectItem key={i + 1} value={(i + 1).toString()}>
+                                  {isArabic ? gregorianMonthNamesAr[i] : gregorianMonthNames[i]}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div>
+                          <Label>{isArabic ? "السنة" : "Year"}</Label>
+                          <Input
+                            type="number"
+                            min={1900}
+                            max={2100}
+                            value={gregorianDate.getFullYear()}
+                            onChange={(e) => {
+                              const newDate = new Date(gregorianDate);
+                              newDate.setFullYear(parseInt(e.target.value));
+                              setGregorianDate(newDate);
+                            }}
+                          />
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -240,18 +291,15 @@ const DateConverterTool = () => {
                 <div className="space-y-4">
                   <div>
                     <Label>{isArabic ? "التاريخ الميلادي" : "Gregorian Date"}</Label>
-                    <div className="mt-2">
-                      <Calendar
-                        mode="single"
-                        selected={gregorianDate}
-                        onSelect={(date) => date && setGregorianDate(date)}
-                        className="rounded-md border mx-auto"
-                      />
-                    </div>
-                    <div className="mt-4 text-center">
-                      <span className="text-xl">
-                        {format(gregorianDate, "MMMM d, yyyy")}
-                      </span>
+                    <div className="mt-2 flex flex-col items-center justify-center h-[300px]">
+                      <div className="text-center">
+                        <div className="text-3xl mb-4">
+                          {format(gregorianDate, "MMMM d, yyyy")}
+                        </div>
+                        <p className="text-muted-foreground">
+                          {isArabic ? "التاريخ الميلادي" : "Gregorian Date"}
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </div>

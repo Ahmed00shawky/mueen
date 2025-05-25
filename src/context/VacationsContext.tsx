@@ -1,93 +1,91 @@
-import { createContext, useContext, useState, useMemo, ReactNode, useEffect } from 'react';
+import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { storage } from '@/lib/storage';
+import { format } from 'date-fns';
 
-interface VacationItem {
-  id: string;
-  text: string;
+interface Employee {
+  name: string;
+  monthlyLeaveAllowance: number;
 }
 
-interface DayVacations {
-  [key: string]: VacationItem[];
+interface MonthlyEmployeeData {
+  [monthKey: string]: Employee[];
 }
 
 interface VacationsContextType {
-  employeeNames: string[];
-  setEmployeeNames: (names: string[]) => void;
+  employeeData: Employee[];
+  setEmployeeData: (data: Employee[]) => void;
+  monthlyEmployeeData: MonthlyEmployeeData;
+  setMonthlyEmployeeData: (data: MonthlyEmployeeData) => void;
   employeeCounts: number[];
-  vacations: DayVacations;
-  setVacations: (vacations: DayVacations) => void;
-  saveVacations: () => void;
+  vacations: Record<string, { id: string; text: string }[]>;
+  setVacations: (vacations: Record<string, { id: string; text: string }[]>) => void;
 }
-
-const STORAGE_KEY = 'monthly-leave-data';
 
 const VacationsContext = createContext<VacationsContextType | undefined>(undefined);
 
 export const VacationsProvider = ({ children }: { children: ReactNode }) => {
-  // Load initial data from localStorage
-  const loadSavedData = () => {
-    try {
-      const savedData = localStorage.getItem(STORAGE_KEY);
-      if (savedData) {
-        const { employeeNames, vacations } = JSON.parse(savedData);
-        return { employeeNames, vacations };
-      }
-    } catch (error) {
-      console.error('Error loading saved data:', error);
-    }
-    return {
-      employeeNames: ['', '', '', ''],
-      vacations: {}
-    };
-  };
+  const [employeeData, setEmployeeData] = useState<Employee[]>(() => {
+    const savedData = storage.getEmployees();
+    return savedData.length > 0 ? savedData : [
+      { name: '', monthlyLeaveAllowance: 0 },
+      { name: '', monthlyLeaveAllowance: 0 },
+      { name: '', monthlyLeaveAllowance: 0 },
+      { name: '', monthlyLeaveAllowance: 0 }
+    ];
+  });
 
-  const { employeeNames: savedNames, vacations: savedVacations } = loadSavedData();
-  
-  const [employeeNames, setEmployeeNames] = useState<string[]>(savedNames);
-  const [vacations, setVacations] = useState<DayVacations>(savedVacations);
+  const [monthlyEmployeeData, setMonthlyEmployeeData] = useState<MonthlyEmployeeData>(() => {
+    const savedData = storage.getMonthlyEmployees();
+    return savedData || {};
+  });
+
+  const [vacations, setVacations] = useState<Record<string, { id: string; text: string }[]>>(() => {
+    return storage.getVacations();
+  });
+
+  const [employeeCounts, setEmployeeCounts] = useState<number[]>([]);
+
+  // Save employee data to storage whenever it changes
+  useEffect(() => {
+    storage.setEmployees(employeeData);
+  }, [employeeData]);
+
+  // Save monthly employee data to storage whenever it changes
+  useEffect(() => {
+    storage.setMonthlyEmployees(monthlyEmployeeData);
+  }, [monthlyEmployeeData]);
+
+  // Save vacations to storage whenever they change
+  useEffect(() => {
+    storage.setVacations(vacations);
+  }, [vacations]);
 
   // Calculate employee counts whenever vacations change
-  const employeeCounts = useMemo(() => {
-    const counts = new Array(4).fill(0);
+  useEffect(() => {
+    const counts = new Array(employeeData.length).fill(0);
     Object.values(vacations).forEach(dayVacations => {
       dayVacations.forEach(item => {
-        const index = employeeNames.indexOf(item.text);
-        if (index !== -1) {
-          counts[index]++;
+        if (item.text) {
+          const employeeIndex = employeeData.findIndex(emp => emp.name === item.text);
+          if (employeeIndex !== -1) {
+            counts[employeeIndex]++;
+          }
         }
       });
     });
-    return counts;
-  }, [vacations, employeeNames]);
-
-  // Save data to localStorage whenever it changes
-  const saveVacations = () => {
-    try {
-      const dataToSave = {
-        employeeNames,
-        vacations
-      };
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(dataToSave));
-    } catch (error) {
-      console.error('Error saving data:', error);
-    }
-  };
-
-  // Auto-save when data changes
-  useEffect(() => {
-    saveVacations();
-  }, [employeeNames, vacations]);
-
-  const value = useMemo(() => ({
-    employeeNames,
-    setEmployeeNames,
-    employeeCounts,
-    vacations,
-    setVacations,
-    saveVacations
-  }), [employeeNames, employeeCounts, vacations]);
+    setEmployeeCounts(counts);
+  }, [vacations, employeeData]);
 
   return (
-    <VacationsContext.Provider value={value}>
+    <VacationsContext.Provider value={{
+      employeeData,
+      setEmployeeData,
+      monthlyEmployeeData,
+      setMonthlyEmployeeData,
+      employeeCounts,
+      vacations,
+      setVacations
+    }}>
       {children}
     </VacationsContext.Provider>
   );

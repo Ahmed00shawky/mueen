@@ -1,4 +1,9 @@
-import { User, Task, Note, Notification, UserSettings, NewsItem, UserRole, UserStatus, Permission } from "./types";
+import { User, Task, Note, Notification, UserSettings, NewsItem, UserRole, UserStatus, Permission, Language, Theme } from "./types";
+
+interface Employee {
+  name: string;
+  monthlyLeaveAllowance: number;
+}
 
 // Default admin user
 const defaultAdmin: User = {
@@ -21,17 +26,48 @@ class LocalStorage {
   private initializeStorage(): void {
     if (!this.getUsers().length) {
       this.setUsers([defaultAdmin]);
+      // Initialize storage for default admin
+      this.initializeUserStorage(defaultAdmin.id);
+    }
+  }
+
+  private initializeUserStorage(userId: string): void {
+    // Initialize all user-specific storage
+    if (!localStorage.getItem(`${this.storagePrefix}tasks_${userId}`)) {
+      localStorage.setItem(`${this.storagePrefix}tasks_${userId}`, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(`${this.storagePrefix}notes_${userId}`)) {
+      localStorage.setItem(`${this.storagePrefix}notes_${userId}`, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(`${this.storagePrefix}leaves_${userId}`)) {
+      localStorage.setItem(`${this.storagePrefix}leaves_${userId}`, JSON.stringify([]));
+    }
+    if (!localStorage.getItem(`${this.storagePrefix}settings_${userId}`)) {
+      localStorage.setItem(`${this.storagePrefix}settings_${userId}`, JSON.stringify({
+        userId,
+        language: Language.English,
+        theme: Theme.Light
+      }));
     }
   }
 
   // Users
   getUsers(): User[] {
-    const users = localStorage.getItem(`${this.storagePrefix}users`);
-    return users ? JSON.parse(users) : [];
+    try {
+      const users = localStorage.getItem(`${this.storagePrefix}users`);
+      return users ? JSON.parse(users) : [];
+    } catch (error) {
+      console.error('Error getting users:', error);
+      return [];
+    }
   }
 
   setUsers(users: User[]): void {
-    localStorage.setItem(`${this.storagePrefix}users`, JSON.stringify(users));
+    try {
+      localStorage.setItem(`${this.storagePrefix}users`, JSON.stringify(users));
+    } catch (error) {
+      console.error('Error setting users:', error);
+    }
   }
 
   getUserById(id: string): User | undefined {
@@ -46,6 +82,8 @@ class LocalStorage {
     const users = this.getUsers();
     users.push(user);
     this.setUsers(users);
+    // Initialize storage for new user
+    this.initializeUserStorage(user.id);
   }
 
   updateUser(updatedUser: User): void {
@@ -58,97 +96,182 @@ class LocalStorage {
   deleteUser(id: string): void {
     const users = this.getUsers().filter(user => user.id !== id);
     this.setUsers(users);
+    // Clean up user-specific storage
+    localStorage.removeItem(`${this.storagePrefix}tasks_${id}`);
+    localStorage.removeItem(`${this.storagePrefix}notes_${id}`);
+    localStorage.removeItem(`${this.storagePrefix}leaves_${id}`);
+    localStorage.removeItem(`${this.storagePrefix}settings_${id}`);
   }
 
   // Tasks
-  getTasks(): Task[] {
-    const tasks = localStorage.getItem(`${this.storagePrefix}tasks`);
-    return tasks ? JSON.parse(tasks) : [];
+  getTasksByUserId(userId: string, currentUser: User): Task[] {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        const tasks = localStorage.getItem(`${this.storagePrefix}tasks_${userId}`);
+        return tasks ? JSON.parse(tasks) : [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting tasks:', error);
+      return [];
+    }
   }
 
-  getTasksByUserId(userId: string): Task[] {
-    return this.getTasks().filter(task => task.userId === userId);
+  setTasksForUser(userId: string, tasks: Task[], currentUser: User): void {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        localStorage.setItem(`${this.storagePrefix}tasks_${userId}`, JSON.stringify(tasks));
+      }
+    } catch (error) {
+      console.error('Error setting tasks:', error);
+    }
   }
 
-  setTasks(tasks: Task[]): void {
-    localStorage.setItem(`${this.storagePrefix}tasks`, JSON.stringify(tasks));
+  addTaskForUser(userId: string, task: Task, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const tasks = this.getTasksByUserId(userId, currentUser);
+      tasks.push(task);
+      this.setTasksForUser(userId, tasks, currentUser);
+    }
   }
 
-  addTask(task: Task): void {
-    const tasks = this.getTasks();
-    tasks.push(task);
-    this.setTasks(tasks);
+  updateTaskForUser(userId: string, updatedTask: Task, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const tasks = this.getTasksByUserId(userId, currentUser).map(task => 
+        task.id === updatedTask.id ? updatedTask : task
+      );
+      this.setTasksForUser(userId, tasks, currentUser);
+    }
   }
 
-  updateTask(updatedTask: Task): void {
-    const tasks = this.getTasks().map(task => 
-      task.id === updatedTask.id ? updatedTask : task
-    );
-    this.setTasks(tasks);
-  }
-
-  deleteTask(id: string): void {
-    const tasks = this.getTasks().filter(task => task.id !== id);
-    this.setTasks(tasks);
+  deleteTaskForUser(userId: string, taskId: string, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const tasks = this.getTasksByUserId(userId, currentUser).filter(task => task.id !== taskId);
+      this.setTasksForUser(userId, tasks, currentUser);
+    }
   }
 
   // Notes
-  getNotes(): Note[] {
-    const notes = localStorage.getItem(`${this.storagePrefix}notes`);
-    return notes ? JSON.parse(notes) : [];
+  getNotesByUserId(userId: string, currentUser: User): Note[] {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        const notes = localStorage.getItem(`${this.storagePrefix}notes_${userId}`);
+        return notes ? JSON.parse(notes) : [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting notes:', error);
+      return [];
+    }
   }
 
-  getNotesByUserId(userId: string): Note[] {
-    return this.getNotes().filter(note => note.userId === userId);
+  setNotesForUser(userId: string, notes: Note[], currentUser: User): void {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        localStorage.setItem(`${this.storagePrefix}notes_${userId}`, JSON.stringify(notes));
+      }
+    } catch (error) {
+      console.error('Error setting notes:', error);
+    }
   }
 
-  getLeavesByUserId(userId: string): any[] {
-    const leaves = localStorage.getItem(`${this.storagePrefix}leaves`);
-    const allLeaves = leaves ? JSON.parse(leaves) : [];
-    return allLeaves.filter((leave: any) => leave.userId === userId);
+  addNoteForUser(userId: string, note: Note, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const notes = this.getNotesByUserId(userId, currentUser);
+      notes.push(note);
+      this.setNotesForUser(userId, notes, currentUser);
+    }
   }
 
-  setNotes(notes: Note[]): void {
-    localStorage.setItem(`${this.storagePrefix}notes`, JSON.stringify(notes));
+  updateNoteForUser(userId: string, updatedNote: Note, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const notes = this.getNotesByUserId(userId, currentUser).map(note => 
+        note.id === updatedNote.id ? updatedNote : note
+      );
+      this.setNotesForUser(userId, notes, currentUser);
+    }
   }
 
-  addNote(note: Note): void {
-    const notes = this.getNotes();
-    notes.push(note);
-    this.setNotes(notes);
+  deleteNoteForUser(userId: string, noteId: string, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const notes = this.getNotesByUserId(userId, currentUser).filter(note => note.id !== noteId);
+      this.setNotesForUser(userId, notes, currentUser);
+    }
   }
 
-  updateNote(updatedNote: Note): void {
-    const notes = this.getNotes().map(note => 
-      note.id === updatedNote.id ? updatedNote : note
-    );
-    this.setNotes(notes);
+  // Leaves
+  getLeavesByUserId(userId: string, currentUser: User): any[] {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        const leaves = localStorage.getItem(`${this.storagePrefix}leaves_${userId}`);
+        return leaves ? JSON.parse(leaves) : [];
+      }
+      return [];
+    } catch (error) {
+      console.error('Error getting leaves:', error);
+      return [];
+    }
   }
 
-  deleteNote(id: string): void {
-    const notes = this.getNotes().filter(note => note.id !== id);
-    this.setNotes(notes);
+  setLeavesForUser(userId: string, leaves: any[], currentUser: User): void {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        localStorage.setItem(`${this.storagePrefix}leaves_${userId}`, JSON.stringify(leaves));
+      }
+    } catch (error) {
+      console.error('Error setting leaves:', error);
+    }
+  }
+
+  addLeaveForUser(userId: string, leave: any, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const leaves = this.getLeavesByUserId(userId, currentUser);
+      leaves.push(leave);
+      this.setLeavesForUser(userId, leaves, currentUser);
+    }
+  }
+
+  updateLeaveForUser(userId: string, updatedLeave: any, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const leaves = this.getLeavesByUserId(userId, currentUser).map(leave => 
+        leave.id === updatedLeave.id ? updatedLeave : leave
+      );
+      this.setLeavesForUser(userId, leaves, currentUser);
+    }
+  }
+
+  deleteLeaveForUser(userId: string, leaveId: string, currentUser: User): void {
+    if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+      const leaves = this.getLeavesByUserId(userId, currentUser).filter(leave => leave.id !== leaveId);
+      this.setLeavesForUser(userId, leaves, currentUser);
+    }
   }
 
   // Notifications
   getNotifications(): Notification[] {
-    const notifications = localStorage.getItem(`${this.storagePrefix}notifications`);
-    return notifications ? JSON.parse(notifications) : [];
+    try {
+      const notifications = localStorage.getItem(`${this.storagePrefix}notifications`);
+      return notifications ? JSON.parse(notifications) : [];
+    } catch (error) {
+      console.error('Error getting notifications:', error);
+      return [];
+    }
   }
 
   getNotificationsByReceiverId(receiverId: string): Notification[] {
-    const notifications = this.getNotifications();
-    return notifications.filter((notification) => notification.receiverId === receiverId);
+    return this.getNotifications().filter(notification => notification.receiverId === receiverId);
   }
 
   getNotificationsBySenderId(senderId: string): Notification[] {
-    const notifications = localStorage.getItem(`${this.storagePrefix}notifications`);
-    const allNotifications = notifications ? JSON.parse(notifications) : [];
-    return allNotifications.filter((notification: Notification) => notification.senderId === senderId);
+    return this.getNotifications().filter(notification => notification.senderId === senderId);
   }
 
   setNotifications(notifications: Notification[]): void {
-    localStorage.setItem(`${this.storagePrefix}notifications`, JSON.stringify(notifications));
+    try {
+      localStorage.setItem(`${this.storagePrefix}notifications`, JSON.stringify(notifications));
+    } catch (error) {
+      console.error('Error setting notifications:', error);
+    }
   }
 
   addNotification(notification: Notification): void {
@@ -158,52 +281,65 @@ class LocalStorage {
   }
 
   updateNotification(notification: Notification): void {
-    const notifications = localStorage.getItem(`${this.storagePrefix}notifications`);
-    const allNotifications = notifications ? JSON.parse(notifications) : [];
-    const updatedNotifications = allNotifications.map((n: Notification) =>
+    const notifications = this.getNotifications().map(n => 
       n.id === notification.id ? notification : n
     );
-    localStorage.setItem(`${this.storagePrefix}notifications`, JSON.stringify(updatedNotifications));
-  }
-
-  deleteNotification(id: string): void {
-    const notifications = this.getNotifications().filter(notification => notification.id !== id);
     this.setNotifications(notifications);
   }
 
   // User Settings
-  getUserSettings(userId: string): UserSettings | undefined {
-    const settings = localStorage.getItem(`${this.storagePrefix}settings`);
-    const allSettings: UserSettings[] = settings ? JSON.parse(settings) : [];
-    return allSettings.find(setting => setting.userId === userId);
-  }
-
-  setUserSettings(settings: UserSettings): void {
-    const allSettings = this.getAllUserSettings();
-    const existingIndex = allSettings.findIndex(s => s.userId === settings.userId);
-    
-    if (existingIndex >= 0) {
-      allSettings[existingIndex] = settings;
-    } else {
-      allSettings.push(settings);
+  getUserSettings(userId: string, currentUser: User): UserSettings {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        const settings = localStorage.getItem(`${this.storagePrefix}settings_${userId}`);
+        return settings ? JSON.parse(settings) : {
+          userId,
+          language: Language.English,
+          theme: Theme.Light
+        };
+      }
+      return {
+        userId,
+        language: Language.English,
+        theme: Theme.Light
+      };
+    } catch (error) {
+      console.error('Error getting user settings:', error);
+      return {
+        userId,
+        language: Language.English,
+        theme: Theme.Light
+      };
     }
-    
-    localStorage.setItem(`${this.storagePrefix}settings`, JSON.stringify(allSettings));
   }
 
-  getAllUserSettings(): UserSettings[] {
-    const settings = localStorage.getItem(`${this.storagePrefix}settings`);
-    return settings ? JSON.parse(settings) : [];
+  setUserSettings(userId: string, settings: UserSettings, currentUser: User): void {
+    try {
+      if (currentUser.role === UserRole.Admin || currentUser.id === userId) {
+        localStorage.setItem(`${this.storagePrefix}settings_${userId}`, JSON.stringify(settings));
+      }
+    } catch (error) {
+      console.error('Error setting user settings:', error);
+    }
   }
 
   // News
   getNews(): NewsItem[] {
-    const news = localStorage.getItem(`${this.storagePrefix}news`);
-    return news ? JSON.parse(news) : [];
+    try {
+      const news = localStorage.getItem(`${this.storagePrefix}news`);
+      return news ? JSON.parse(news) : [];
+    } catch (error) {
+      console.error('Error getting news:', error);
+      return [];
+    }
   }
 
   setNews(news: NewsItem[]): void {
-    localStorage.setItem(`${this.storagePrefix}news`, JSON.stringify(news));
+    try {
+      localStorage.setItem(`${this.storagePrefix}news`, JSON.stringify(news));
+    } catch (error) {
+      console.error('Error setting news:', error);
+    }
   }
 
   addNewsItem(newsItem: NewsItem): void {
@@ -222,6 +358,63 @@ class LocalStorage {
   deleteNewsItem(id: string): void {
     const news = this.getNews().filter(item => item.id !== id);
     this.setNews(news);
+  }
+
+  // Employees
+  getEmployees(): Employee[] {
+    try {
+      const employees = localStorage.getItem(`${this.storagePrefix}employees`);
+      return employees ? JSON.parse(employees) : [];
+    } catch (error) {
+      console.error('Error getting employees:', error);
+      return [];
+    }
+  }
+
+  setEmployees(employees: Employee[]): void {
+    try {
+      localStorage.setItem(`${this.storagePrefix}employees`, JSON.stringify(employees));
+    } catch (error) {
+      console.error('Error setting employees:', error);
+    }
+  }
+
+  // Monthly Employees
+  getMonthlyEmployees(): Record<string, Employee[]> {
+    try {
+      const monthlyEmployees = localStorage.getItem(`${this.storagePrefix}monthlyEmployees`);
+      return monthlyEmployees ? JSON.parse(monthlyEmployees) : {};
+    } catch (error) {
+      console.error('Error getting monthly employees:', error);
+      return {};
+    }
+  }
+
+  setMonthlyEmployees(monthlyEmployees: Record<string, Employee[]>): void {
+    try {
+      localStorage.setItem(`${this.storagePrefix}monthlyEmployees`, JSON.stringify(monthlyEmployees));
+    } catch (error) {
+      console.error('Error setting monthly employees:', error);
+    }
+  }
+
+  // Vacations
+  getVacations(): Record<string, { id: string; text: string }[]> {
+    try {
+      const vacations = localStorage.getItem(`${this.storagePrefix}vacations`);
+      return vacations ? JSON.parse(vacations) : {};
+    } catch (error) {
+      console.error('Error getting vacations:', error);
+      return {};
+    }
+  }
+
+  setVacations(vacations: Record<string, { id: string; text: string }[]>): void {
+    try {
+      localStorage.setItem(`${this.storagePrefix}vacations`, JSON.stringify(vacations));
+    } catch (error) {
+      console.error('Error setting vacations:', error);
+    }
   }
 }
 
