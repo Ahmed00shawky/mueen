@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { HashRouter, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
@@ -26,7 +26,7 @@ function App() {
             <TooltipProvider>
               <Toaster />
               <Sonner />
-              <BrowserRouter>
+              <HashRouter>
                 <Routes>
                   <Route path="/" element={<WelcomePage />} />
                   <Route path="/login" element={<LoginPage />} />
@@ -40,7 +40,7 @@ function App() {
                   
                   <Route path="*" element={<NotFound />} />
                 </Routes>
-              </BrowserRouter>
+              </HashRouter>
             </TooltipProvider>
           </VacationsProvider>
         </SettingsProvider>
