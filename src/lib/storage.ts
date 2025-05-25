@@ -16,8 +16,30 @@ const defaultAdmin: User = {
   lastLogin: new Date().toISOString()
 };
 
+class EventEmitter {
+  private listeners: { [key: string]: Function[] } = {};
+
+  on(event: string, callback: Function) {
+    if (!this.listeners[event]) {
+      this.listeners[event] = [];
+    }
+    this.listeners[event].push(callback);
+  }
+
+  off(event: string, callback: Function) {
+    if (!this.listeners[event]) return;
+    this.listeners[event] = this.listeners[event].filter(cb => cb !== callback);
+  }
+
+  emit(event: string, data?: any) {
+    if (!this.listeners[event]) return;
+    this.listeners[event].forEach(callback => callback(data));
+  }
+}
+
 class LocalStorage {
   private storagePrefix = "mueen_";
+  private eventEmitter = new EventEmitter();
 
   constructor() {
     this.initializeStorage();
@@ -84,13 +106,35 @@ class LocalStorage {
     this.setUsers(users);
     // Initialize storage for new user
     this.initializeUserStorage(user.id);
+    this.eventEmitter.emit('user_update', { type: 'user_added', user });
   }
 
   updateUser(updatedUser: User): void {
-    const users = this.getUsers().map(user => 
-      user.id === updatedUser.id ? updatedUser : user
-    );
-    this.setUsers(users);
+    try {
+      const users = this.getUsers();
+      const index = users.findIndex(u => u.id === updatedUser.id);
+      if (index !== -1) {
+        users[index] = updatedUser;
+        this.setUsers(users);
+        this.eventEmitter.emit('user_update', { user: updatedUser });
+      }
+    } catch (error) {
+      console.error('Error updating user:', error);
+    }
+  }
+
+  updateUserStatus(userId: string, status: UserStatus): void {
+    try {
+      const users = this.getUsers();
+      const user = users.find(u => u.id === userId);
+      if (user) {
+        user.status = status;
+        this.setUsers(users);
+        this.eventEmitter.emit('user_update', { user });
+      }
+    } catch (error) {
+      console.error('Error updating user status:', error);
+    }
   }
 
   deleteUser(id: string): void {
@@ -101,6 +145,7 @@ class LocalStorage {
     localStorage.removeItem(`${this.storagePrefix}notes_${id}`);
     localStorage.removeItem(`${this.storagePrefix}leaves_${id}`);
     localStorage.removeItem(`${this.storagePrefix}settings_${id}`);
+    this.eventEmitter.emit('user_update', { type: 'user_deleted', userId: id });
   }
 
   // Tasks
@@ -415,6 +460,14 @@ class LocalStorage {
     } catch (error) {
       console.error('Error setting vacations:', error);
     }
+  }
+
+  onUserUpdate(callback: (data: any) => void) {
+    this.eventEmitter.on('user_update', callback);
+  }
+
+  offUserUpdate(callback: (data: any) => void) {
+    this.eventEmitter.off('user_update', callback);
   }
 }
 

@@ -8,6 +8,8 @@ export interface User {
   status: UserStatus;
   permissions: Permission[];
   lastLogin: string;
+  token?: string;
+  isActive?: boolean;
 }
 
 export enum UserRole {
@@ -27,7 +29,19 @@ export enum Permission {
   EditBrowse = "edit_browse",
   ViewAdmin = "view_admin",
   SendNotifications = "send_notifications",
-  ManageUsers = "manage_users"
+  ManageUsers = "manage_users",
+  ViewTodo = "view_todo",
+  EditTodo = "edit_todo",
+  ViewDateConverter = "view_date_converter",
+  EditDateConverter = "edit_date_converter",
+  ViewTimeCalculator = "view_time_calculator",
+  EditTimeCalculator = "edit_time_calculator",
+  ViewNotepad = "view_notepad",
+  EditNotepad = "edit_notepad",
+  ViewMonthlyVacations = "view_monthly_vacations",
+  EditMonthlyVacations = "edit_monthly_vacations",
+  ViewMonthlyLeave = "view_monthly_leave",
+  EditMonthlyLeave = "edit_monthly_leave"
 }
 
 export interface Task {

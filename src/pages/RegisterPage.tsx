@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -77,7 +76,13 @@ const RegisterPage = () => {
       status: UserStatus.Offline,
       permissions: [
         Permission.ViewTools,
-        Permission.ViewBrowse
+        Permission.ViewBrowse,
+        Permission.ViewTodo,
+        Permission.ViewDateConverter,
+        Permission.ViewTimeCalculator,
+        Permission.ViewNotepad,
+        Permission.ViewMonthlyVacations,
+        Permission.ViewMonthlyLeave
       ],
       lastLogin: new Date().toISOString()
     };

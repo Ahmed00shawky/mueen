@@ -1,4 +1,3 @@
-
 import { createContext, useState, useContext, useEffect, ReactNode } from "react";
 import { storage } from "@/lib/storage";
 import { Language, Theme, UserSettings } from "@/lib/types";
@@ -39,7 +38,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
   // Load user settings when user changes
   useEffect(() => {
     if (user) {
-      const userSettings = storage.getUserSettings(user.id);
+      const userSettings = storage.getUserSettings(user.id, user);
       
       if (userSettings) {
         setLanguageState(userSettings.language);
@@ -53,7 +52,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
           theme: Theme.Light,
           customColors: defaultCustomColors
         };
-        storage.setUserSettings(defaultSettings);
+        storage.setUserSettings(user.id, defaultSettings, user);
       }
     }
   }, [user]);
@@ -80,7 +79,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
   const setLanguage = (lang: Language) => {
     setLanguageState(lang);
     if (user) {
-      const userSettings = storage.getUserSettings(user.id) || {
+      const userSettings = storage.getUserSettings(user.id, user) || {
         userId: user.id,
         theme,
         language: lang,
@@ -88,14 +87,14 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
       };
       
       userSettings.language = lang;
-      storage.setUserSettings(userSettings);
+      storage.setUserSettings(user.id, userSettings, user);
     }
   };
 
   const setTheme = (newTheme: Theme) => {
     setThemeState(newTheme);
     if (user) {
-      const userSettings = storage.getUserSettings(user.id) || {
+      const userSettings = storage.getUserSettings(user.id, user) || {
         userId: user.id,
         theme: newTheme,
         language,
@@ -103,14 +102,14 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
       };
       
       userSettings.theme = newTheme;
-      storage.setUserSettings(userSettings);
+      storage.setUserSettings(user.id, userSettings, user);
     }
   };
 
   const setCustomColors = (colors: Record<string, string>) => {
     setCustomColorsState(colors);
     if (user) {
-      const userSettings = storage.getUserSettings(user.id) || {
+      const userSettings = storage.getUserSettings(user.id, user) || {
         userId: user.id,
         theme,
         language,
@@ -118,7 +117,7 @@ export const SettingsProvider = ({ children }: SettingsProviderProps) => {
       };
       
       userSettings.customColors = colors;
-      storage.setUserSettings(userSettings);
+      storage.setUserSettings(user.id, userSettings, user);
     }
   };
 
